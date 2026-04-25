@@ -124,44 +124,43 @@ def latest(emp_id):
 # -------- CHAT --------
 @app.route("/sync")
 def sync():
-    import cloudinary
-    import cloudinary.api
-    import sqlite3
+    try:
+        import cloudinary
+        import cloudinary.api
+        import sqlite3
 
-    cloudinary.config(
-        cloud_name="dyaijms6g",
-        api_key="737786234689224",
-        api_secret="8UGpDODAQD9j3M-c24MW9EkZtJk"
-    )
-
-    conn = sqlite3.connect("database.db")
-    cur = conn.cursor()
-
-    resources = cloudinary.api.resources(
-        resource_type="image",  # ✅ FIXED
-        max_results=500
-    )
-
-    count = 0
-
-    for res in resources["resources"]:
-        public_id = res["public_id"]
-        url = res["secure_url"]
-
-        filename = public_id + ".pdf"
-
-        cur.execute(
-            "UPDATE payslips SET file_url=? WHERE filename=?",
-            (url, filename)
+        cloudinary.config(
+            cloud_name="dyaijms6g",
+            api_key="737786234689224",
+            api_secret="8UGpDODAQD9j3M-c24MW9EkZtJk"
         )
 
-        if cur.rowcount > 0:
-            count += 1
+        conn = sqlite3.connect("database.db")
+        cur = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        resources = cloudinary.api.resources(resource_type="image", max_results=500)
 
-    return f"✅ Synced {count} files!"
+        count = 0
+
+        for res in resources["resources"]:
+            public_id = res["public_id"]
+            url = res["secure_url"]
+
+            cur.execute(
+                "UPDATE payslips SET file_url=? WHERE filename LIKE ?",
+                (url, f"%{public_id}%")
+            )
+
+            if cur.rowcount > 0:
+                count += 1
+
+        conn.commit()
+        conn.close()
+
+        return f"✅ Synced {count} files!"
+
+    except Exception as e:
+        return f"❌ ERROR: {str(e)}"
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
