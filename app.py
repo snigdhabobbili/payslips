@@ -1,7 +1,13 @@
+import os
 from flask import Flask, request, jsonify, render_template, send_from_directory
 import sqlite3
 
 app = Flask(__name__)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+
+# all your routes here...
 
 # -------- MONTH MAP --------
 MONTH_NAMES = {
