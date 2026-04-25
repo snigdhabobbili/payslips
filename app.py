@@ -124,8 +124,16 @@ def latest(emp_id):
 # -------- CHAT --------
 @app.route("/sync")
 def sync():
+    import cloudinary
     import cloudinary.api
     import sqlite3
+
+    # 🔥 ADD THIS (very important)
+    cloudinary.config(
+        cloud_name="your_cloud_name",
+        api_key="your_api_key",
+        api_secret="your_api_secret"
+    )
 
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
@@ -140,8 +148,8 @@ def sync():
         filename = public_id + ".pdf"
 
         cur.execute(
-            "UPDATE payslips SET file_url=? WHERE filename=?",
-            (url, filename)
+            "UPDATE payslips SET file_url=? WHERE filename LIKE ?",
+            (url, f"%{public_id}%")
         )
         count += 1
 
