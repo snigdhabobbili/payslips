@@ -27,15 +27,14 @@ MONTH_MAP = {
     "dec": "12", "december": "12"
 }
 
-# -------- TEMP MEMORY --------
 pending = {}
 
-# -------- ROUTES --------
-
+# -------- HOME --------
 @app.route("/")
 def home():
     return render_template("index.html")
 
+# -------- LOGIN --------
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -47,7 +46,6 @@ def login():
     return jsonify({"status": "fail"}), 401
 
 # -------- DB HELPERS --------
-
 def fetch_latest(emp_id):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
@@ -100,10 +98,62 @@ def month_exists_any_year(emp_id, month):
     conn.close()
     return bool(exists)
 
-# -------- LATEST --------
+# -------- SYNC FUNCTION --------
+def run_sync():
+    import cloudinary
+    import cloudinary.api
 
+    cloudinary.config(
+        cloud_name="dyaijms6g",
+        api_key="737786234689224",
+        api_secret="8UGpDODAQD9j3M-c24MW9EkZtJk"
+    )
+
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    # 🔥 Fetch BOTH image + raw
+    img = cloudinary.api.resources(resource_type="image", max_results=500)
+    raw = cloudinary.api.resources(resource_type="raw", max_results=500)
+
+    all_resources = img["resources"] + raw["resources"]
+
+    for res in all_resources:
+        public_id = res["public_id"]
+        url = res["secure_url"]
+
+        try:
+            emp, month, year = public_id.split("_")
+        except:
+            continue
+
+        filename = public_id + ".pdf"
+
+        # 🔥 INSERT OR UPDATE
+        cur.execute("""
+            INSERT INTO payslips (employee_id, month, year, filename, file_url)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(employee_id, month, year)
+            DO UPDATE SET file_url=excluded.file_url
+        """, (emp, month, year, filename, url))
+
+    conn.commit()
+    conn.close()
+
+# -------- SYNC ROUTE --------
+@app.route("/sync")
+def sync():
+    try:
+        run_sync()
+        return "✅ Sync completed!"
+    except Exception as e:
+        return f"❌ ERROR: {str(e)}"
+
+# -------- LATEST --------
 @app.route("/latest/<emp_id>")
 def latest(emp_id):
+    run_sync()   # 🔥 AUTO SYNC
+
     row = fetch_latest(emp_id)
     if row:
         file_url, m, y = row
@@ -122,89 +172,46 @@ def latest(emp_id):
     })
 
 # -------- CHAT --------
-@app.route("/sync")
-def sync():
-    try:
-        import cloudinary
-        import cloudinary.api
-        import sqlite3
-
-        cloudinary.config(
-            cloud_name="dyaijms6g",
-            api_key="737786234689224",
-            api_secret="8UGpDODAQD9j3M-c24MW9EkZtJk"
-        )
-
-        conn = sqlite3.connect("database.db")
-        cur = conn.cursor()
-
-        resources = cloudinary.api.resources(resource_type="image", max_results=500)
-
-        count = 0
-
-        for res in resources["resources"]:
-            public_id = res["public_id"]
-            url = res["secure_url"]
-
-            cur.execute(
-                "UPDATE payslips SET file_url=? WHERE filename LIKE ?",
-                (url, f"%{public_id}%")
-            )
-
-            if cur.rowcount > 0:
-                count += 1
-
-        conn.commit()
-        conn.close()
-
-        return f"✅ Synced {count} files!"
-
-    except Exception as e:
-        return f"❌ ERROR: {str(e)}"
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
     msg = (data.get("message") or "").lower()
     emp_id = data.get("employee_id")
 
-    # detect month
     month = None
     for k, v in MONTH_MAP.items():
         if k in msg:
             month = v
             break
 
-    # detect year
     year = None
     for w in msg.split():
         if w.isdigit() and len(w) == 4:
             year = w
             break
 
-    # use memory
     if emp_id in pending:
         if not month:
             month = pending[emp_id].get("month")
         if not year:
             year = pending[emp_id].get("year")
 
-    # if month mentioned but doesn't exist at all
     if month and not month_exists_any_year(emp_id, month):
         pending.pop(emp_id, None)
         return jsonify({
-            "reply": f"No payslips found for {MONTH_NAMES[month]} in any year",
+            "reply": f"No payslips found for {MONTH_NAMES[month]}",
             "file": None
         })
 
-    # month but no year
     if month and not year:
         pending[emp_id] = {"month": month}
         return jsonify({
             "reply": f"Which year for {MONTH_NAMES[month]}?"
         })
 
-    # month + year
     if month and year:
+        run_sync()   # 🔥 ensure latest data
+
         file_url = fetch_exact(emp_id, month, year)
         pending.pop(emp_id, None)
 
@@ -223,7 +230,6 @@ def chat():
                 "file": None
             })
 
-    # year only
     if year:
         row = fetch_year_latest(emp_id, year)
         if row:
@@ -242,10 +248,8 @@ def chat():
                 "file": None
             })
 
-    # fallback
     return latest(emp_id)
 
-# -------- RUN APP --------
-
+# -------- RUN --------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
