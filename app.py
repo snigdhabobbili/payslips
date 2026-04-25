@@ -128,30 +128,30 @@ def sync():
     import cloudinary.api
     import sqlite3
 
-    # 🔥 ADD THIS (very important)
     cloudinary.config(
-        cloud_name="your_cloud_name",
-        api_key="your_api_key",
-        api_secret="your_api_secret"
+        cloud_name="dyaijms6g",
+        api_key="737786234689224",
+        api_secret="8UGpDODAQD9j3M-c24MW9EkZtJk"
     )
 
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
 
-    resources = cloudinary.api.resources(resource_type="raw", max_results=500)
+    resources = cloudinary.api.resources(resource_type="image", max_results=500)
 
     count = 0
 
     for res in resources["resources"]:
         public_id = res["public_id"]
         url = res["secure_url"]
-        filename = public_id + ".pdf"
 
         cur.execute(
             "UPDATE payslips SET file_url=? WHERE filename LIKE ?",
             (url, f"%{public_id}%")
         )
-        count += 1
+
+        if cur.rowcount > 0:
+            count += 1
 
     conn.commit()
     conn.close()
