@@ -191,9 +191,9 @@ function updateUI(data) {
         return;
     }
 
-    // ✅ CASE 3: valid file
+    // CASE 3: valid file
     frame.style.display = "block";
-    frame.src = "/" + data.file;
+    frame.src = data.file;
 
     label.innerText = data.label;
 
