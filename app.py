@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 import sqlite3
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -36,11 +36,6 @@ pending = {}
 def home():
     return render_template("index.html")
 
-# ✅ TEST ROUTE (temporary)
-@app.route("/test")
-def test():
-    return "App is working"
-
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -51,17 +46,13 @@ def login():
         return jsonify({"status": "success"})
     return jsonify({"status": "fail"}), 401
 
-@app.route("/uploads/<path:filename>")
-def get_file(filename):
-    return send_from_directory("uploads", filename)
-
 # -------- DB HELPERS --------
 
 def fetch_latest(emp_id):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
     cur.execute("""
-        SELECT filename, month, year
+        SELECT file_url, month, year
         FROM payslips
         WHERE employee_id=?
         ORDER BY year DESC, month DESC
@@ -75,7 +66,7 @@ def fetch_exact(emp_id, month, year):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
     cur.execute("""
-        SELECT filename
+        SELECT file_url
         FROM payslips
         WHERE employee_id=? AND month=? AND year=?
     """, (emp_id, month, year))
@@ -87,7 +78,7 @@ def fetch_year_latest(emp_id, year):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
     cur.execute("""
-        SELECT filename, month
+        SELECT file_url, month
         FROM payslips
         WHERE employee_id=? AND year=?
         ORDER BY month DESC
@@ -115,10 +106,10 @@ def month_exists_any_year(emp_id, month):
 def latest(emp_id):
     row = fetch_latest(emp_id)
     if row:
-        filename, m, y = row
+        file_url, m, y = row
         label = f"Showing {MONTH_NAMES[m]} {y} Payslip"
         return jsonify({
-            "file": f"uploads/{filename}",
+            "file": file_url,
             "month": m,
             "year": y,
             "label": label,
@@ -138,24 +129,28 @@ def chat():
     msg = (data.get("message") or "").lower()
     emp_id = data.get("employee_id")
 
+    # detect month
     month = None
     for k, v in MONTH_MAP.items():
         if k in msg:
             month = v
             break
 
+    # detect year
     year = None
     for w in msg.split():
         if w.isdigit() and len(w) == 4:
             year = w
             break
 
+    # use memory
     if emp_id in pending:
         if not month:
             month = pending[emp_id].get("month")
         if not year:
             year = pending[emp_id].get("year")
 
+    # if month mentioned but doesn't exist at all
     if month and not month_exists_any_year(emp_id, month):
         pending.pop(emp_id, None)
         return jsonify({
@@ -163,20 +158,22 @@ def chat():
             "file": None
         })
 
+    # month but no year
     if month and not year:
         pending[emp_id] = {"month": month}
         return jsonify({
             "reply": f"Which year for {MONTH_NAMES[month]}?"
         })
 
+    # month + year
     if month and year:
-        filename = fetch_exact(emp_id, month, year)
+        file_url = fetch_exact(emp_id, month, year)
         pending.pop(emp_id, None)
 
-        if filename:
+        if file_url:
             label = f"Showing {MONTH_NAMES[month]} {year} Payslip"
             return jsonify({
-                "file": f"uploads/{filename}",
+                "file": file_url,
                 "month": month,
                 "year": year,
                 "label": label,
@@ -188,13 +185,14 @@ def chat():
                 "file": None
             })
 
+    # year only
     if year:
         row = fetch_year_latest(emp_id, year)
         if row:
-            filename, m = row
+            file_url, m = row
             label = f"Showing {MONTH_NAMES[m]} {year} Payslip"
             return jsonify({
-                "file": f"uploads/{filename}",
+                "file": file_url,
                 "month": m,
                 "year": year,
                 "label": label,
@@ -206,9 +204,10 @@ def chat():
                 "file": None
             })
 
+    # fallback
     return latest(emp_id)
 
-# -------- RUN APP (ONLY ONE) --------
+# -------- RUN APP --------
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
