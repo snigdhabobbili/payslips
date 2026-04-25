@@ -2,12 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template, send_from_directory
 import sqlite3
 
-app = Flask(__name__)
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
-
-# all your routes here...
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # -------- MONTH MAP --------
 MONTH_NAMES = {
@@ -35,9 +30,16 @@ MONTH_MAP = {
 # -------- TEMP MEMORY --------
 pending = {}
 
+# -------- ROUTES --------
+
 @app.route("/")
 def home():
     return render_template("index.html")
+
+# ✅ TEST ROUTE (temporary)
+@app.route("/test")
+def test():
+    return "App is working"
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -54,6 +56,7 @@ def get_file(filename):
     return send_from_directory("uploads", filename)
 
 # -------- DB HELPERS --------
+
 def fetch_latest(emp_id):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
@@ -66,7 +69,7 @@ def fetch_latest(emp_id):
     """, (emp_id,))
     row = cur.fetchone()
     conn.close()
-    return row  # (filename, month, year) or None
+    return row
 
 def fetch_exact(emp_id, month, year):
     conn = sqlite3.connect("database.db")
@@ -92,7 +95,7 @@ def fetch_year_latest(emp_id, year):
     """, (emp_id, year))
     row = cur.fetchone()
     conn.close()
-    return row  # (filename, month) or None
+    return row
 
 def month_exists_any_year(emp_id, month):
     conn = sqlite3.connect("database.db")
@@ -107,6 +110,7 @@ def month_exists_any_year(emp_id, month):
     return bool(exists)
 
 # -------- LATEST --------
+
 @app.route("/latest/<emp_id>")
 def latest(emp_id):
     row = fetch_latest(emp_id)
@@ -127,34 +131,31 @@ def latest(emp_id):
     })
 
 # -------- CHAT --------
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
     msg = (data.get("message") or "").lower()
     emp_id = data.get("employee_id")
 
-    # detect month
     month = None
     for k, v in MONTH_MAP.items():
         if k in msg:
             month = v
             break
 
-    # detect year
     year = None
     for w in msg.split():
         if w.isdigit() and len(w) == 4:
             year = w
             break
 
-    # use memory
     if emp_id in pending:
         if not month:
             month = pending[emp_id].get("month")
         if not year:
             year = pending[emp_id].get("year")
 
-    # if month mentioned, check if it exists at all
     if month and not month_exists_any_year(emp_id, month):
         pending.pop(emp_id, None)
         return jsonify({
@@ -162,14 +163,12 @@ def chat():
             "file": None
         })
 
-    # if month but no year -> ask
     if month and not year:
         pending[emp_id] = {"month": month}
         return jsonify({
             "reply": f"Which year for {MONTH_NAMES[month]}?"
         })
 
-    # month + year
     if month and year:
         filename = fetch_exact(emp_id, month, year)
         pending.pop(emp_id, None)
@@ -189,7 +188,6 @@ def chat():
                 "file": None
             })
 
-    # year only -> latest month in that year
     if year:
         row = fetch_year_latest(emp_id, year)
         if row:
@@ -208,8 +206,9 @@ def chat():
                 "file": None
             })
 
-    # fallback -> latest
     return latest(emp_id)
 
+# -------- RUN APP (ONLY ONE) --------
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
