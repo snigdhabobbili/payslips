@@ -122,7 +122,33 @@ def latest(emp_id):
     })
 
 # -------- CHAT --------
+@app.route("/sync")
+def sync():
+    import cloudinary.api
+    import sqlite3
 
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    resources = cloudinary.api.resources(resource_type="raw", max_results=500)
+
+    count = 0
+
+    for res in resources["resources"]:
+        public_id = res["public_id"]
+        url = res["secure_url"]
+        filename = public_id + ".pdf"
+
+        cur.execute(
+            "UPDATE payslips SET file_url=? WHERE filename=?",
+            (url, filename)
+        )
+        count += 1
+
+    conn.commit()
+    conn.close()
+
+    return f"✅ Synced {count} files!"
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
