@@ -137,7 +137,10 @@ def sync():
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
 
-    resources = cloudinary.api.resources(resource_type="image", max_results=500)
+    resources = cloudinary.api.resources(
+        resource_type="image",  # ✅ FIXED
+        max_results=500
+    )
 
     count = 0
 
@@ -145,9 +148,11 @@ def sync():
         public_id = res["public_id"]
         url = res["secure_url"]
 
+        filename = public_id + ".pdf"
+
         cur.execute(
-            "UPDATE payslips SET file_url=? WHERE filename LIKE ?",
-            (url, f"%{public_id}%")
+            "UPDATE payslips SET file_url=? WHERE filename=?",
+            (url, filename)
         )
 
         if cur.rowcount > 0:

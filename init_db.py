@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS payslips (
     month TEXT,
     year TEXT,
     filename TEXT,
+    file_url TEXT,   -- ✅ IMPORTANT FIX
     UNIQUE(employee_id, month, year)
 )
 """)
@@ -17,4 +18,4 @@ CREATE TABLE IF NOT EXISTS payslips (
 conn.commit()
 conn.close()
 
-print("DB ready")
+print("✅ Database ready with file_url column")

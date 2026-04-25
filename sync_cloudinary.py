@@ -2,30 +2,30 @@ import cloudinary
 import cloudinary.api
 import sqlite3
 
-# 🔐 Replace with your real credentials
+# ⚠️ Replace with NEW credentials (rotate your secret!)
 cloudinary.config(
     cloud_name="dyaijms6g",
     api_key="737786234689224",
     api_secret="8UGpDODAQD9j3M-c24MW9EkZtJk"
 )
 
-# Connect to database
 conn = sqlite3.connect("database.db")
 cur = conn.cursor()
 
 try:
-    # ✅ Fetch PDFs (IMPORTANT: resource_type="raw")
-    resources = cloudinary.api.resources(resource_type="raw", max_results=500)
+    resources = cloudinary.api.resources(
+        resource_type="image",   # ✅ FIXED
+        max_results=500
+    )
 
     count = 0
 
     for res in resources["resources"]:
-        public_id = res["public_id"]        # e.g. 16501369_02_2026
-        url = res["secure_url"]             # full correct URL
+        public_id = res["public_id"]        # 16501369_02_2026
+        url = res["secure_url"]
 
-        filename = public_id + ".pdf"
+        filename = public_id + ".pdf"       # match DB
 
-        # Update DB
         cur.execute(
             "UPDATE payslips SET file_url=? WHERE filename=?",
             (url, filename)
