@@ -9,16 +9,21 @@ UPLOAD_FOLDER = "uploads"
 def insert_db(emp, month, year, filename):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
+
     try:
         cur.execute("""
         INSERT INTO payslips (employee_id, month, year, filename)
         VALUES (?, ?, ?, ?)
         """, (emp, month, year, filename))
+
         conn.commit()
         print("Inserted:", filename)
+
     except:
-        print("Duplicate/Invalid:", filename)
+        print("Skipped (duplicate):", filename)
+
     conn.close()
+
 
 class Handler(FileSystemEventHandler):
     def on_created(self, event):
@@ -32,24 +37,22 @@ class Handler(FileSystemEventHandler):
 
         time.sleep(1)
 
-        try:
-            parts = file.replace(".pdf", "").split("_")
-            if len(parts) != 3:
-                print("Invalid:", file)
-                return
+        parts = file.replace(".pdf", "").split("_")
 
-            emp, month, year = parts
-            insert_db(emp, month, year, file)
+        if len(parts) != 3:
+            print("Invalid format:", file)
+            return
 
-        except Exception as e:
-            print("Error:", e)
+        emp, month, year = parts
+        insert_db(emp, month, year, file)
+
 
 if __name__ == "__main__":
     observer = Observer()
     observer.schedule(Handler(), UPLOAD_FOLDER, recursive=False)
     observer.start()
 
-    print("Watcher running...")
+    print("👀 Watching uploads folder...")
 
     try:
         while True:

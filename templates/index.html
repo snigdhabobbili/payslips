@@ -2,28 +2,55 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Employee Login</title>
+<title>Payslip Portal</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
 body {
-    background: linear-gradient(to right, #eef2ff, #e0f2fe);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #e3f0ff, #f7faff);
+    font-family: 'Segoe UI', sans-serif;
 }
 
 .login-card {
-    width: 380px;
-    margin: 100px auto;
-    padding: 30px;
-    border-radius: 12px;
+    width: 420px;
+    padding: 35px;
+    border-radius: 16px;
     background: white;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    text-align: center;
 }
 
-#captchaText {
+.form-control {
+    border-radius: 12px;
+    height: 45px;
+    margin-bottom: 15px;
+}
+
+.captcha {
+    background: #f1f1f1;
+    border-radius: 10px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 15px;
     font-weight: bold;
-    letter-spacing: 3px;
-    font-size: 18px;
+    letter-spacing: 2px;
+    font-family: monospace;
+}
+
+.login-btn {
+    width: 100%;
+    height: 45px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #2b7cff, #0056d6);
+    color: white;
+    border: none;
 }
 </style>
 </head>
@@ -31,96 +58,64 @@ body {
 <body>
 
 <div class="login-card">
-    <h3 class="text-center">Employee Payslip Login</h3>
-    <p class="text-center text-muted">Enter your credentials</p>
 
-    <form id="loginForm" autocomplete="off">
+    <h4>Payslip Portal</h4>
 
-        <!-- Employee ID -->
-        <input type="text" id="employee_id" class="form-control mb-3"
-               placeholder="Employee ID" required>
+    <input type="text" id="employee_id" class="form-control"
+           placeholder="Employee ID" autocomplete="off">
 
-        <!-- Password -->
-        <input type="password" id="password" class="form-control mb-3"
-               placeholder="Password" required>
+    <input type="password" id="password" class="form-control"
+           placeholder="Password" autocomplete="new-password">
 
-        <!-- CAPTCHA -->
-        <div class="mb-3">
-            <div id="captchaText" class="mb-2"></div>
-            <input type="text" id="captchaInput" class="form-control"
-                   placeholder="Enter captcha" required>
-        </div>
+    <div class="captcha" id="captcha-text"></div>
+    <input type="text" id="captcha-input" class="form-control mt-2"
+           placeholder="Enter captcha" autocomplete="off">
 
-        <button class="btn btn-primary w-100">Login</button>
-    </form>
+    <button class="login-btn mt-2" onclick="login()">Login</button>
 
-    <p id="errorMsg" class="text-danger text-center mt-2"></p>
 </div>
 
 <script>
+let currentCaptcha = "";
 
-// 🔐 Generate captcha
 function generateCaptcha() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let captcha = "";
-
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let c = "";
     for (let i = 0; i < 5; i++) {
-        captcha += chars[Math.floor(Math.random() * chars.length)];
+        c += chars[Math.floor(Math.random() * chars.length)];
     }
-
-    document.getElementById("captchaText").innerText = captcha;
+    currentCaptcha = c;
+    document.getElementById("captcha-text").innerText = c;
 }
 
 window.onload = generateCaptcha;
 
+function login() {
+    const emp = document.getElementById("employee_id").value;
+    const pass = document.getElementById("password").value;
+    const cap = document.getElementById("captcha-input").value;
 
-// 🔐 Login submit
-document.getElementById("loginForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-
-    const empId = document.getElementById("employee_id").value.trim();
-    const password = document.getElementById("password").value;
-    const captchaInput = document.getElementById("captchaInput").value;
-    const captchaActual = document.getElementById("captchaText").innerText;
-
-    const errorMsg = document.getElementById("errorMsg");
-    errorMsg.innerText = "";
-
-    // ID validation
-    if (!/^[0-9]{8}$/.test(empId)) {
-        errorMsg.innerText = "Invalid Employee ID";
-        return;
-    }
-
-    // CAPTCHA validation
-    if (captchaInput !== captchaActual) {
-        errorMsg.innerText = "Invalid captcha";
+    if (cap !== currentCaptcha) {
+        alert("Invalid captcha");
         generateCaptcha();
         return;
     }
 
-    // Backend login
     fetch("/login", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            employee_id: empId,
-            password: password
-        })
+        body: JSON.stringify({employee_id: emp, password: pass})
     })
     .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
-    })
-    .then(() => {
-        localStorage.setItem("employee_id", empId);
-        window.location.href = "/static/dashboard.html";
-    })
-    .catch(() => {
-        errorMsg.innerText = "Wrong credentials";
+        if (res.ok) {
+            localStorage.setItem("employee_id", emp);
+            window.location.href = "/dashboard";
+        } else {
+            alert("Invalid credentials");
+            generateCaptcha();
+        }
     });
-});
-
+}
 </script>
 
 </body>

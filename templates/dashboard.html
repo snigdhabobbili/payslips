@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            text-align: center;
+            margin-top: 80px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .cards {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            width: 280px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #777;
+        }
+
+        .btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-blue {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-purple {
+            background: #7c3aed;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Welcome 👋</h1>
+    <p>Select an option to continue</p>
+
+    <div class="cards">
+
+        <!-- Payslip Card -->
+        <div class="card">
+            <h2>🧾 Payslip Portal</h2>
+            <p>View and download your payslips</p>
+
+            <button class="btn btn-blue"
+                onclick="window.location.href='/payslip'">
+                Open Payslip
+            </button>
+        </div>
+
+        <!-- AI Assistant Card -->
+        <div class="card">
+            <h2>🤖 AI Assistant</h2>
+            <p>Ask questions about salary, leaves and policies</p>
+
+            <button class="btn btn-purple"
+                onclick="window.location.href='/chat-ui'">
+                Open Assistant
+            </button>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
